@@ -1,6 +1,6 @@
 # Juan Delivery
 
-Marketplace mobile de vinhos e acessórios de vinho, no modelo iFood. Vendedores cadastram produtos e clientes compram pelo app.
+Aplicativo mobile de delivery de vinhos e acessórios de vinho, no modelo iFood. Vendedores cadastram produtos e clientes compram pelo app.
 
 O repositório tem duas partes independentes:
 

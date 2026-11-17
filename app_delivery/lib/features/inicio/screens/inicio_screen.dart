@@ -7,6 +7,7 @@ import '../../catalogo/services/produto_service.dart';
 import '../../carrinho/widgets/carrinho_appbar_action.dart';
 import '../../catalogo/screens/produto_detalhe_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/notificacoes_em_breve.dart';
 
 /// Fundo dos ícones de categoria.
 const _kCategoriaBg = Color(0xFFF0E8EF);
@@ -276,11 +277,6 @@ class _InicioScreenState extends State<InicioScreen> with WidgetsBindingObserver
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 2),
-            const Text(
-              'Seu marketplace de vinhos',
-              style: TextStyle(color: kCreme, fontSize: 13, fontWeight: FontWeight.w400),
-            ),
           ],
         ),
         actions: [
@@ -288,8 +284,7 @@ class _InicioScreenState extends State<InicioScreen> with WidgetsBindingObserver
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
-              // Apenas visual por enquanto, sem funcionalidade.
-              onPressed: () {},
+              onPressed: () => mostrarNotificacoesEmBreve(context),
               icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
             ),
           ),

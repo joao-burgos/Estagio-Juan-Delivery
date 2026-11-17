@@ -5,6 +5,7 @@ import 'meus_dados_screen.dart';
 import 'endereco_screen.dart';
 import 'alterar_senha_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/notificacoes_em_breve.dart';
 
 /// Tela de Perfil, terceira aba da BottomNavigationBar para usuários com
 /// perfil CLIENTE. Reúne dados da conta, endereços, configurações e logout.
@@ -95,7 +96,7 @@ class PerfilScreen extends StatelessWidget {
                 icon: Icons.notifications,
                 titulo: 'Notificações',
                 subtitulo: 'Preferências de notificação',
-                onTap: () {},
+                onTap: () => mostrarNotificacoesEmBreve(context),
               ),
               _PerfilItem(
                 icon: Icons.info,

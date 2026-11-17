@@ -130,3 +130,4 @@ Se o celular não conseguir abrir, libere as portas 8080 (API) e 8081 (app) no f
 ## Próximos passos
 
 - Área do vendedor (lojas parceiras cadastrando os próprios produtos). Hoje só o administrador cadastra produtos.
+- Notificações sobre o status do pedido.

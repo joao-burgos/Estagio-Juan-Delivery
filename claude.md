@@ -4,7 +4,8 @@
 Aplicativo mobile de delivery de vinhos e acessórios de vinho.
 O administrador cadastra e gerencia os produtos e os usuários; o cliente consulta o catálogo, monta o carrinho,
 faz pedidos e confirma a entrega.
-Escopo do estágio: apenas a experiência do usuário/cliente.
+Escopo atual: experiência do cliente (catálogo, carrinho, pedidos, entrega, perfil e endereços) e área
+administrativa (usuários e produtos). A área do vendedor e o pagamento ficam fora do escopo atual.
 
 ## Stack
 - **Backend:** Java 21, Spring Boot 3.4.5, Maven

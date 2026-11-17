@@ -12,6 +12,7 @@ public final class MensagensErro {
     public static final String PRODUTO_NAO_ENCONTRADO = "Produto não encontrado";
     public static final String PEDIDO_NAO_ENCONTRADO = "Pedido não encontrado";
     public static final String EMAIL_JA_CADASTRADO = "Email já cadastrado";
+    public static final String CPF_JA_CADASTRADO = "CPF já cadastrado";
     public static final String EMAIL_OBRIGATORIO = "Email é obrigatório";
     public static final String PRODUTO_INDISPONIVEL = "Produto indisponível";
     public static final String PEDIDO_CANCELADO_NAO_ALTERA = "Pedido cancelado não pode ser alterado";

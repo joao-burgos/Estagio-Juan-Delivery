@@ -1,8 +1,9 @@
 # Juan Delivery — Contexto do Projeto
 
 ## Visão Geral
-Aplicativo mobile de delivery de vinhos e acessórios de vinho, no modelo iFood.
-Vendedores cadastram produtos na plataforma, usuários compram pelo app.
+Aplicativo mobile de delivery de vinhos e acessórios de vinho.
+O administrador cadastra e gerencia os produtos e os usuários; o cliente consulta o catálogo, monta o carrinho,
+faz pedidos e confirma a entrega.
 Escopo do estágio: apenas a experiência do usuário/cliente.
 
 ## Stack

@@ -6,7 +6,7 @@ import 'package:front_delivery/features/admin/screens/produto_form_screen.dart';
 import 'package:front_delivery/features/admin/screens/produto_list_screen.dart';
 import 'package:front_delivery/features/admin/screens/usuario_form_screen.dart';
 import 'package:front_delivery/features/admin/screens/usuario_list_screen.dart';
-import 'package:front_delivery/features/admin/widgets/filtro_chip.dart';
+import 'package:front_delivery/core/widgets/filtro_chip.dart';
 import 'package:http/http.dart' as http;
 
 import '../../helpers/api_falsa.dart';

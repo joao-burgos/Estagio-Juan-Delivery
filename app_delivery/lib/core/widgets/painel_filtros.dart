@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// Abre o painel "Filtros" em um bottom sheet. [rascunho] é o estado inicial;
 /// [construir] monta as seções a partir do rascunho atual e de um `atualizar`
 /// que troca o rascunho. Retorna o filtro escolhido em "Aplicar"/"Limpar",
 /// ou `null` se o painel for fechado sem aplicar.
+///
+/// [validar], se informado, recebe o rascunho atual e devolve uma mensagem
+/// de erro (ou `null`). Com erro, a mensagem aparece acima dos botões e
+/// "Aplicar" fica desativado.
 Future<T?> abrirPainelFiltros<T>({
   required BuildContext context,
   required T rascunho,
   required T Function(T atual) limpar,
   required List<Widget> Function(T atual, void Function(T novo) atualizar) construir,
+  String? Function(T atual)? validar,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -20,8 +25,9 @@ Future<T?> abrirPainelFiltros<T>({
     ),
     builder: (ctx) {
       var atual = rascunho;
-      return StatefulBuilder(
-        builder: (ctx, setSheet) => ConstrainedBox(
+      return StatefulBuilder(builder: (ctx, setSheet) {
+        final erro = validar?.call(atual);
+        return ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
           child: SafeArea(
             child: Column(
@@ -56,6 +62,11 @@ Future<T?> abrirPainelFiltros<T>({
                   ),
                 ),
                 const Divider(height: 1),
+                if (erro != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Text(erro, style: const TextStyle(color: kErroInline, fontSize: 13)),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                   child: Row(
@@ -75,7 +86,7 @@ Future<T?> abrirPainelFiltros<T>({
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx, atual),
+                          onPressed: erro == null ? () => Navigator.pop(ctx, atual) : null,
                           child: const Text('Aplicar'),
                         ),
                       ),
@@ -85,8 +96,8 @@ Future<T?> abrirPainelFiltros<T>({
               ],
             ),
           ),
-        ),
-      );
+        );
+      });
     },
   );
 }

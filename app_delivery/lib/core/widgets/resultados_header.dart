@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// Linha discreta acima da lista: "X resultados" e, se houver algum filtro
 /// ativo, o link "Limpar filtros".
@@ -47,8 +47,13 @@ class ResultadosHeader extends StatelessWidget {
 /// Estado vazio quando os filtros não encontram nada.
 class SemResultados extends StatelessWidget {
   final VoidCallback onLimpar;
+  final String mensagem;
 
-  const SemResultados({super.key, required this.onLimpar});
+  const SemResultados({
+    super.key,
+    required this.onLimpar,
+    this.mensagem = 'Nenhum resultado para os filtros aplicados',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +65,10 @@ class SemResultados extends StatelessWidget {
           children: [
             const Icon(Icons.search_off, size: 56, color: kPrimary),
             const SizedBox(height: 16),
-            const Text(
-              'Nenhum resultado para os filtros aplicados',
+            Text(
+              mensagem,
               textAlign: TextAlign.center,
-              style: TextStyle(color: kTextSecondary, fontSize: 15),
+              style: const TextStyle(color: kTextSecondary, fontSize: 15),
             ),
             const SizedBox(height: 16),
             OutlinedButton(

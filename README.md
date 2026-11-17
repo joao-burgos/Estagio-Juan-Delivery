@@ -46,14 +46,14 @@ app_delivery/lib/
 │   ├── theme/         cores (app_colors.dart) e ThemeData (app_theme.dart, auth_theme.dart)
 │   ├── session/       SessaoUsuario
 │   ├── network/       tratamento comum de erros da API (parseErro)
-│   ├── utils/         validadores (CPF, harmonização), máscaras de input, lista de países
-│   └── widgets/       widgets usados em várias features (LabelObrigatorio)
+│   ├── utils/         validadores (CPF, harmonização), máscaras de input, lista de países, formatadores
+│   └── widgets/       widgets usados em várias features (paginação, painel e chips de filtro...)
 └── features/
     ├── auth/          login e cadastro
     ├── inicio/        tela inicial e carrossel
     ├── catalogo/      busca e detalhe do produto
     ├── carrinho/      CarrinhoController e tela do carrinho
-    ├── pedidos/       lista, detalhe, confirmação e pedido concluído
+    ├── pedidos/       lista (com filtros por data, valor e quantidade), detalhe, confirmação e pedido concluído
     ├── perfil/        perfil, meus dados, endereços e alterar senha
     └── admin/         gerenciamento de usuários e produtos (listas, formulários e filtros)
 ```

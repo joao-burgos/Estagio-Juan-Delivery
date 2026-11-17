@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../filters/pedido_filtro.dart';
 import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../../../core/session/sessao_usuario.dart';
 import 'detalhes_pedido_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatadores.dart';
+import '../../../core/widgets/filtro_chip.dart';
 import '../../../core/widgets/paginacao.dart';
+import '../../../core/widgets/painel_filtros.dart';
+import '../../../core/widgets/resultados_header.dart';
 
 const _kHistoricoBg = Color(0xFFF5F5F5);
 
@@ -48,13 +54,24 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
   // sempre em 0 — ver comentário em DetalhesPedidoScreen), então o total de
   // cada card é somado a partir dos itens de cada pedido.
   final Map<int, double> _totais = {};
+  // Soma das quantidades dos itens de cada pedido (para o filtro de quantidade).
+  final Map<int, int> _quantidades = {};
   bool _carregando = true;
+
+  // Filtro local, aplicado às duas abas antes da paginação.
+  PedidoFiltro _filtro = const PedidoFiltro();
 
   // Paginação só na interface, uma página atual por aba (começam em 1).
   int _paginaEmAberto = 1;
   int _paginaHistorico = 1;
   final _scrollEmAberto = ScrollController();
   final _scrollHistorico = ScrollController();
+
+  // Campos do painel de filtros (ficam com a tela para sobreviver à animação de fechar o painel).
+  final _valorMin = TextEditingController();
+  final _valorMax = TextEditingController();
+  final _qtdMin = TextEditingController();
+  final _qtdMax = TextEditingController();
 
   @override
   void initState() {
@@ -68,6 +85,9 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
     _tabController.dispose();
     _scrollEmAberto.dispose();
     _scrollHistorico.dispose();
+    for (final c in [_valorMin, _valorMax, _qtdMin, _qtdMax]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -88,10 +108,13 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
     if (scroll.hasClients) scroll.jumpTo(0);
   }
 
-  List<Pedido> get _emAberto => _pedidos.where((p) => _kStatusEmAberto.contains(p.status)).toList();
+  /// Pedidos que passam no filtro atual (base das duas abas).
+  List<Pedido> get _filtrados => _filtro.aplicar(_pedidos, totais: _totais, quantidades: _quantidades);
+
+  List<Pedido> get _emAberto => _filtrados.where((p) => _kStatusEmAberto.contains(p.status)).toList();
 
   List<Pedido> get _historico {
-    final lista = _pedidos.where((p) => _kStatusHistorico.contains(p.status)).toList();
+    final lista = _filtrados.where((p) => _kStatusHistorico.contains(p.status)).toList();
     lista.sort((a, b) {
       final dataA = a.dataPedido;
       final dataB = b.dataPedido;
@@ -106,10 +129,12 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
     try {
       final pedidos = await _service.listarPorUsuario(SessaoUsuario.id!);
       final totais = <int, double>{};
+      final quantidades = <int, int>{};
       await Future.wait(pedidos.map((p) async {
         try {
           final itens = await _service.listarItensPorPedido(p.id);
           totais[p.id] = itens.fold(0.0, (soma, item) => soma + item.subtotal);
+          quantidades[p.id] = itens.fold(0, (soma, item) => soma + item.quantidade);
         } catch (_) {
           totais[p.id] = p.valorTotal;
         }
@@ -120,6 +145,9 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
         _totais
           ..clear()
           ..addAll(totais);
+        _quantidades
+          ..clear()
+          ..addAll(quantidades);
         _carregando = false;
       });
     } catch (e) {
@@ -142,6 +170,143 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
     });
   }
 
+  /// Troca o filtro e volta as duas abas para a página 1.
+  void _aplicarFiltro(PedidoFiltro filtro) {
+    setState(() {
+      _filtro = filtro;
+      _paginaEmAberto = 1;
+      _paginaHistorico = 1;
+    });
+    for (final scroll in [_scrollEmAberto, _scrollHistorico]) {
+      if (scroll.hasClients) scroll.jumpTo(0);
+    }
+  }
+
+  void _limparFiltros() => _aplicarFiltro(const PedidoFiltro());
+
+  /// Abre o seletor de período em português e nas cores do app.
+  Future<IntervaloDatas?> _escolherPeriodo(IntervaloDatas? atual) async {
+    final hoje = DateTime.now();
+    final ultimoDia = DateTime(hoje.year, hoje.month, hoje.day);
+    final escolhido = await showDateRangePicker(
+      context: context,
+      locale: const Locale('pt', 'BR'),
+      firstDate: DateTime(2020),
+      lastDate: ultimoDia,
+      initialDateRange:
+          atual == null || atual.fim.isAfter(ultimoDia) ? null : DateTimeRange(start: atual.inicio, end: atual.fim),
+      helpText: 'Selecione o período',
+      saveText: 'Aplicar', // modo calendário
+      confirmText: 'Aplicar', // modo digitação
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: kPrimary, onPrimary: Colors.white),
+        ),
+        child: child!,
+      ),
+    );
+    return escolhido == null ? null : IntervaloDatas(escolhido.start, escolhido.end);
+  }
+
+  Future<void> _abrirFiltros() async {
+    String texto(num? v, {bool decimal = false}) =>
+        v == null ? '' : (decimal ? v.toStringAsFixed(2).replaceAll('.', ',') : '$v');
+    _valorMin.text = texto(_filtro.valorMin, decimal: true);
+    _valorMax.text = texto(_filtro.valorMax, decimal: true);
+    _qtdMin.text = texto(_filtro.quantidadeMin);
+    _qtdMax.text = texto(_filtro.quantidadeMax);
+
+    final escolhido = await abrirPainelFiltros<PedidoFiltro>(
+      context: context,
+      rascunho: _filtro,
+      limpar: (_) => const PedidoFiltro(),
+      validar: (f) => f.erro,
+      construir: (f, atualizar) {
+        final intervalo = f.intervalo(DateTime.now());
+        return [
+          SecaoFiltro(
+            titulo: 'Período',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final p in PeriodoPedido.values)
+                    FiltroChip(
+                      label: p.label,
+                      selecionado: f.periodo == p,
+                      onTap: () async {
+                        if (p != PeriodoPedido.personalizado) {
+                          atualizar(f.comPeriodo(p));
+                          return;
+                        }
+                        final periodo = await _escolherPeriodo(f.personalizado);
+                        // Cancelou o seletor: mantém o que estava.
+                        if (periodo != null) atualizar(f.comPeriodo(p, periodo));
+                      },
+                    ),
+                ]),
+                if (intervalo != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    intervalo.rotulo,
+                    key: const ValueKey('rotulo-periodo'),
+                    style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SecaoFiltro(
+            titulo: 'Valor total',
+            child: _CamposFaixa(
+              rotuloMin: 'Valor mínimo',
+              rotuloMax: 'Valor máximo',
+              prefixo: 'R\$ ',
+              decimal: true,
+              min: _valorMin,
+              max: _valorMax,
+              onChanged: () => atualizar(f.comValor(lerValor(_valorMin.text), lerValor(_valorMax.text))),
+            ),
+          ),
+          SecaoFiltro(
+            titulo: 'Quantidade de itens',
+            child: _CamposFaixa(
+              rotuloMin: 'Mínimo de itens',
+              rotuloMax: 'Máximo de itens',
+              min: _qtdMin,
+              max: _qtdMax,
+              onChanged: () => atualizar(f.comQuantidade(int.tryParse(_qtdMin.text), int.tryParse(_qtdMax.text))),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const DicaFiltro('Os filtros valem para Em Aberto e Histórico.'),
+        ];
+      },
+    );
+
+    if (escolhido != null && mounted) _aplicarFiltro(escolhido);
+  }
+
+  /// Resumo legível dos filtros ativos, ex.: "01/11/2026 – 17/11/2026 · até R$ 200,00".
+  String _resumoFiltros() {
+    String faixa(String? min, String? max) => switch ((min, max)) {
+          (String a, String b) => '$a a $b',
+          (String a, null) => 'a partir de $a',
+          (null, String b) => 'até $b',
+          _ => '',
+        };
+    final partes = <String>[
+      if (_filtro.temData) _filtro.intervalo(DateTime.now())!.rotulo,
+      if (_filtro.temValor)
+        faixa(
+          _filtro.valorMin == null ? null : formatarReais(_filtro.valorMin!),
+          _filtro.valorMax == null ? null : formatarReais(_filtro.valorMax!),
+        ),
+      if (_filtro.temQuantidade) '${faixa(_filtro.quantidadeMin?.toString(), _filtro.quantidadeMax?.toString())} itens',
+    ];
+    return partes.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,6 +314,20 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
       appBar: AppBar(
         title: const Text('Meus Pedidos'),
         backgroundColor: kPrimary,
+        actions: [
+          IconButton(
+            tooltip: 'Filtros',
+            onPressed: _carregando ? null : _abrirFiltros,
+            icon: Badge(
+              isLabelVisible: _filtro.temFiltroAtivo,
+              label: Text('${_filtro.ativos}'),
+              backgroundColor: Colors.white,
+              textColor: kPrimary,
+              child: const Icon(Icons.tune, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -164,22 +343,76 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
       ),
       body: _carregando
           ? const Center(child: CircularProgressIndicator(color: kPrimary))
-          : RefreshIndicator(
-              color: kPrimary,
-              onRefresh: _carregar,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildEmAberto(),
-                  _buildHistorico(),
-                ],
-              ),
+          : Column(
+              children: [
+                if (_filtro.temFiltroAtivo) _buildFiltrosAtivos(),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: kPrimary,
+                    onRefresh: _carregar,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildEmAberto(),
+                        _buildHistorico(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+    );
+  }
+
+  /// Faixa acima das abas com o resumo dos filtros e o link "Limpar filtros".
+  Widget _buildFiltrosAtivos() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 4, 8, 4),
+      child: Row(
+        children: [
+          const Icon(Icons.tune, size: 16, color: kPrimary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _resumoFiltros(),
+              key: const ValueKey('resumo-filtros'),
+              style: const TextStyle(color: kTextPrimary, fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            onPressed: _limparFiltros,
+            style: TextButton.styleFrom(
+              foregroundColor: kPrimary,
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            child: const Text('Limpar filtros'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Estado vazio de uma aba quando há filtro ativo e nada bate com ele.
+  Widget _buildSemResultados() {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: SemResultados(
+            mensagem: 'Nenhum pedido encontrado com esses filtros',
+            onLimpar: _limparFiltros,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildEmAberto() {
     final pedidos = _emAberto;
+    if (pedidos.isEmpty && _filtro.temFiltroAtivo) return _buildSemResultados();
     if (pedidos.isEmpty) {
       return _buildVazio(
         icone: Icons.inventory_2_outlined,
@@ -210,6 +443,7 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
 
   Widget _buildHistorico() {
     final pedidos = _historico;
+    if (pedidos.isEmpty && _filtro.temFiltroAtivo) return _buildSemResultados();
     if (pedidos.isEmpty) {
       return _buildVazio(
         icone: Icons.list_alt_outlined,
@@ -259,6 +493,68 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Valor em reais: até 7 dígitos inteiros e 2 decimais, com vírgula ou ponto.
+/// Uma edição que deixaria o texto fora desse formato é ignorada.
+final _kFormatoValor = TextInputFormatter.withFunction(
+  (antigo, novo) => RegExp(r'^\d{0,7}([.,]\d{0,2})?$').hasMatch(novo.text) ? novo : antigo,
+);
+
+/// Dois campos lado a lado (mínimo e máximo), opcionais. Com [decimal], aceita
+/// vírgula ou ponto e até 2 casas; sem, só números inteiros.
+class _CamposFaixa extends StatelessWidget {
+  final String rotuloMin;
+  final String rotuloMax;
+  final String? prefixo;
+  final bool decimal;
+  final TextEditingController min;
+  final TextEditingController max;
+  final VoidCallback onChanged;
+
+  const _CamposFaixa({
+    required this.rotuloMin,
+    required this.rotuloMax,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.prefixo,
+    this.decimal = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget campo(String rotulo, TextEditingController controller) => Expanded(
+          child: TextField(
+            key: ValueKey(rotulo),
+            controller: controller,
+            onChanged: (_) => onChanged(),
+            keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+            inputFormatters: [
+              decimal ? _kFormatoValor : FilteringTextInputFormatter.digitsOnly,
+            ],
+            cursorColor: kPrimary,
+            decoration: InputDecoration(
+              labelText: rotulo,
+              prefixText: prefixo,
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: kPrimary, width: 1.5),
+              ),
+            ),
+          ),
+        );
+
+    return Row(
+      children: [
+        campo(rotuloMin, min),
+        const SizedBox(width: 12),
+        campo(rotuloMax, max),
+      ],
     );
   }
 }

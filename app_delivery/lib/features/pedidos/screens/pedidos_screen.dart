@@ -4,6 +4,7 @@ import '../services/pedido_service.dart';
 import '../../../core/session/sessao_usuario.dart';
 import 'detalhes_pedido_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/paginacao.dart';
 
 const _kHistoricoBg = Color(0xFFF5F5F5);
 
@@ -49,17 +50,42 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
   final Map<int, double> _totais = {};
   bool _carregando = true;
 
+  // Paginação só na interface, uma página atual por aba (começam em 1).
+  int _paginaEmAberto = 1;
+  int _paginaHistorico = 1;
+  final _scrollEmAberto = ScrollController();
+  final _scrollHistorico = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this)..addListener(_aoTrocarAba);
     _carregar();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollEmAberto.dispose();
+    _scrollHistorico.dispose();
     super.dispose();
+  }
+
+  int _abaAtual = 0;
+
+  /// Trocar de aba (por toque ou arrastando) volta as duas para a página 1.
+  void _aoTrocarAba() {
+    if (_tabController.index == _abaAtual) return;
+    setState(() {
+      _abaAtual = _tabController.index;
+      _paginaEmAberto = 1;
+      _paginaHistorico = 1;
+    });
+  }
+
+  void _irParaPagina(ScrollController scroll, VoidCallback mudar) {
+    setState(mudar);
+    if (scroll.hasClients) scroll.jumpTo(0);
   }
 
   List<Pedido> get _emAberto => _pedidos.where((p) => _kStatusEmAberto.contains(p.status)).toList();
@@ -160,15 +186,25 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
         mensagem: 'Nenhum pedido em aberto',
       );
     }
-    return ListView.builder(
+    // Se a página ficou vazia (ex.: pedido cancelado foi para o histórico), cai na anterior.
+    _paginaEmAberto = paginaValida(_paginaEmAberto, pedidos.length);
+    return ListView(
+      controller: _scrollEmAberto,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
-      itemCount: pedidos.length,
-      itemBuilder: (_, i) => _CardPedido(
-        pedido: pedidos[i],
-        total: _totais[pedidos[i].id] ?? pedidos[i].valorTotal,
-        onVerDetalhes: () => _abrirDetalhes(pedidos[i].id),
-      ),
+      children: [
+        for (final p in fatiarPagina(pedidos, _paginaEmAberto))
+          _CardPedido(
+            pedido: p,
+            total: _totais[p.id] ?? p.valorTotal,
+            onVerDetalhes: () => _abrirDetalhes(p.id),
+          ),
+        Paginacao(
+          totalItens: pedidos.length,
+          paginaAtual: _paginaEmAberto,
+          onPaginaChanged: (n) => _irParaPagina(_scrollEmAberto, () => _paginaEmAberto = n),
+        ),
+      ],
     );
   }
 
@@ -180,16 +216,25 @@ class _PedidosScreenState extends State<PedidosScreen> with SingleTickerProvider
         mensagem: 'Nenhum pedido no histórico',
       );
     }
-    return ListView.builder(
+    _paginaHistorico = paginaValida(_paginaHistorico, pedidos.length);
+    return ListView(
+      controller: _scrollHistorico,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
-      itemCount: pedidos.length,
-      itemBuilder: (_, i) => _CardPedido(
-        pedido: pedidos[i],
-        total: _totais[pedidos[i].id] ?? pedidos[i].valorTotal,
-        encerrado: true,
-        onVerDetalhes: () => _abrirDetalhes(pedidos[i].id),
-      ),
+      children: [
+        for (final p in fatiarPagina(pedidos, _paginaHistorico))
+          _CardPedido(
+            pedido: p,
+            total: _totais[p.id] ?? p.valorTotal,
+            encerrado: true,
+            onVerDetalhes: () => _abrirDetalhes(p.id),
+          ),
+        Paginacao(
+          totalItens: pedidos.length,
+          paginaAtual: _paginaHistorico,
+          onPaginaChanged: (n) => _irParaPagina(_scrollHistorico, () => _paginaHistorico = n),
+        ),
+      ],
     );
   }
 

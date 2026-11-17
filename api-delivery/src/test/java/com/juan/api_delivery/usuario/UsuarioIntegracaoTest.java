@@ -76,6 +76,46 @@ class UsuarioIntegracaoTest extends IntegracaoBase {
             assertThat(comCoringa).isEqualTo(3);
         }
 
+        @Test
+        void cpfDuplicadoRetorna400() throws Exception {
+            postJson("/usuarios", usuario("cpf1@teste.com", "11144477735")).andExpect(status().isCreated());
+            postJson("/usuarios", usuario("cpf2@teste.com", "111.444.777-35"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("CPF já cadastrado"));
+            assertThat(usuarioRepository.findByEmailIgnoreCase("cpf2@teste.com")).isEmpty();
+        }
+
+        @Test
+        void cpfDeContaInativaRetorna400() throws Exception {
+            salvarDireto("inativo.cpf@teste.com", false); // CPF 11144477735
+            postJson("/usuarios", usuario("novo.cpf@teste.com", "11144477735"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("CPF já cadastrado"));
+        }
+
+        @Test
+        void edicaoComCpfDeOutroUsuarioRetorna400() throws Exception {
+            postJson("/usuarios", usuario("dono@teste.com", "11144477735")).andExpect(status().isCreated());
+            JsonNode outro = corpoDe(postJson("/usuarios", usuario("outro@teste.com", "52998224725")));
+            long id = outro.get("id").asLong();
+
+            putJson("/usuarios/" + id, usuario("outro@teste.com", "11144477735"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("CPF já cadastrado"));
+            assertThat(usuarioRepository.findById(id).orElseThrow().getCpf()).isEqualTo("52998224725");
+        }
+
+        @Test
+        void edicaoMantendoOProprioCpfFunciona() throws Exception {
+            JsonNode criado = corpoDe(postJson("/usuarios", usuario("mesmo@teste.com", "11144477735")));
+            Map<String, Object> corpo = usuario("mesmo@teste.com", "111.444.777-35");
+            corpo.put("nome", "Maria Souza");
+            putJson("/usuarios/" + criado.get("id").asLong(), corpo)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Maria Souza"))
+                .andExpect(jsonPath("$.cpf").value("11144477735"));
+        }
+
         @ParameterizedTest
         @ValueSource(strings = {"11111111111", "11144477736", "1114447773", "111444777", "abcdefghijk"})
         void cpfInvalidoRetorna400(String cpf) throws Exception {

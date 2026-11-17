@@ -1,6 +1,9 @@
 # Juan Delivery
 
-Aplicativo mobile de delivery de vinhos e acessórios de vinho, no modelo iFood. Vendedores cadastram produtos e clientes compram pelo app.
+Aplicativo mobile de delivery de vinhos e acessórios de vinho, com dois perfis de acesso:
+
+- **Administrador:** cadastra e gerencia os produtos (vinhos e acessórios, com estoque) e os usuários.
+- **Cliente:** consulta o catálogo, monta o carrinho, faz pedidos e confirma a entrega.
 
 O repositório tem duas partes independentes:
 
@@ -123,3 +126,7 @@ dart format lib test           # largura de 120 colunas, configurada no analysis
 4. No celular, conectado à **mesma rede Wi-Fi**, abra `http://192.168.0.15:8081`.
 
 Se o celular não conseguir abrir, libere as portas 8080 (API) e 8081 (app) no firewall do Windows.
+
+## Próximos passos
+
+- Área do vendedor (lojas parceiras cadastrando os próprios produtos). Hoje só o administrador cadastra produtos.

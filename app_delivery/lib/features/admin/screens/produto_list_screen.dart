@@ -12,6 +12,7 @@ import '../widgets/status_chips.dart';
 import 'produto_form_screen.dart';
 import '../../../core/session/logout.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/paginacao.dart';
 
 class ProdutoListScreen extends StatefulWidget {
   const ProdutoListScreen({super.key});
@@ -31,6 +32,10 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   // feitos depois de editar ou excluir.
   ProdutoFiltro _filtro = const ProdutoFiltro();
 
+  // Paginação só na interface (a API devolve tudo). Começa em 1.
+  int _pagina = 1;
+  final _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +45,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   @override
   void dispose() {
     _buscaCtrl.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -64,9 +70,20 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     }
   }
 
+  /// Qualquer mudança de busca, status ou filtro volta para a página 1.
+  void _aplicarFiltro(ProdutoFiltro filtro) => setState(() {
+        _filtro = filtro;
+        _pagina = 1;
+      });
+
+  void _irParaPagina(int pagina) {
+    setState(() => _pagina = pagina);
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
   void _limparFiltros() {
     _buscaCtrl.clear();
-    setState(() => _filtro = const ProdutoFiltro());
+    _aplicarFiltro(const ProdutoFiltro());
   }
 
   Future<void> _abrirFiltros() async {
@@ -142,7 +159,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     if (escolhido == null || !mounted) return;
     // Busca e status vêm do estado atual (o debounce pode ter disparado com
     // o painel aberto); do painel só interessam os filtros avançados.
-    setState(() => _filtro = escolhido.copyWith(busca: _filtro.busca, status: _filtro.status));
+    _aplicarFiltro(escolhido.copyWith(busca: _filtro.busca, status: _filtro.status));
   }
 
   Widget _buildFaixaPreco(
@@ -258,12 +275,12 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
             controller: _buscaCtrl,
             hint: 'Nome, descrição, país ou marca',
             filtrosAtivos: _filtro.avancadosAtivos,
-            onBusca: (t) => setState(() => _filtro = _filtro.copyWith(busca: t)),
+            onBusca: (t) => _aplicarFiltro(_filtro.copyWith(busca: t)),
             onFiltros: _abrirFiltros,
           ),
           StatusChips(
             selecionado: _filtro.status,
-            onChanged: (st) => setState(() => _filtro = _filtro.copyWith(status: st)),
+            onChanged: (st) => _aplicarFiltro(_filtro.copyWith(status: st)),
           ),
           Expanded(child: _buildConteudo()),
         ],
@@ -308,17 +325,33 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   }
 
   Widget _buildLista(List<Produto> filtrados) {
+    // Com status "Todos", ativos vêm antes dos inativos (seção "Inativos").
+    // A paginação fatia essa mesma ordem, 10 por página.
+    final ordenados = _filtro.status == StatusFiltro.todos
+        ? [...filtrados.where((p) => p.ativo), ...filtrados.where((p) => !p.ativo)]
+        : filtrados;
+    // Se a página atual ficou vazia (item excluído/inativado), cai na anterior.
+    _pagina = paginaValida(_pagina, ordenados.length);
+    final pagina = fatiarPagina(ordenados, _pagina);
+    final paginacao = Paginacao(totalItens: ordenados.length, paginaAtual: _pagina, onPaginaChanged: _irParaPagina);
+
+    // Padding inferior de 88 para a paginação não ficar atrás do FAB.
     const padding = EdgeInsets.fromLTRB(20, 4, 20, 88);
     // Com status "Ativos" ou "Inativos" a lista já é de um tipo só.
     if (_filtro.status != StatusFiltro.todos) {
       return ListView(
+        controller: _scroll,
         padding: padding,
-        children: filtrados.map((p) => _buildProdutoCard(p, inativo: !p.ativo)).toList(),
+        children: [
+          ...pagina.map((p) => _buildProdutoCard(p, inativo: !p.ativo)),
+          paginacao,
+        ],
       );
     }
-    final ativos = filtrados.where((p) => p.ativo);
-    final inativos = filtrados.where((p) => !p.ativo);
+    final ativos = pagina.where((p) => p.ativo);
+    final inativos = pagina.where((p) => !p.ativo);
     return ListView(
+      controller: _scroll,
       padding: padding,
       children: [
         ...ativos.map((p) => _buildProdutoCard(p, inativo: false)),
@@ -332,6 +365,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
           ),
           ...inativos.map((p) => _buildProdutoCard(p, inativo: true)),
         ],
+        paginacao,
       ],
     );
   }

@@ -1,6 +1,9 @@
 # Juan Delivery
 
-Marketplace mobile de vinhos e acessórios de vinho, no modelo iFood. Vendedores cadastram produtos e clientes compram pelo app.
+Aplicativo mobile de delivery de vinhos e acessórios de vinho, com dois perfis de acesso:
+
+- **Administrador:** cadastra e gerencia os produtos (vinhos e acessórios, com estoque) e os usuários.
+- **Cliente:** consulta o catálogo, monta o carrinho, faz pedidos e confirma a entrega.
 
 O repositório tem duas partes independentes:
 
@@ -43,14 +46,14 @@ app_delivery/lib/
 │   ├── theme/         cores (app_colors.dart) e ThemeData (app_theme.dart, auth_theme.dart)
 │   ├── session/       SessaoUsuario
 │   ├── network/       tratamento comum de erros da API (parseErro)
-│   ├── utils/         validadores (CPF, harmonização), máscaras de input, lista de países
-│   └── widgets/       widgets usados em várias features (LabelObrigatorio)
+│   ├── utils/         validadores (CPF, harmonização), máscaras de input, lista de países, formatadores
+│   └── widgets/       widgets usados em várias features (paginação, painel e chips de filtro...)
 └── features/
     ├── auth/          login e cadastro
     ├── inicio/        tela inicial e carrossel
     ├── catalogo/      busca e detalhe do produto
     ├── carrinho/      CarrinhoController e tela do carrinho
-    ├── pedidos/       lista, detalhe, confirmação e pedido concluído
+    ├── pedidos/       lista (com filtros por data, valor e quantidade), detalhe, confirmação e pedido concluído
     ├── perfil/        perfil, meus dados, endereços e alterar senha
     └── admin/         gerenciamento de usuários e produtos (listas, formulários e filtros)
 ```
@@ -123,3 +126,8 @@ dart format lib test           # largura de 120 colunas, configurada no analysis
 4. No celular, conectado à **mesma rede Wi-Fi**, abra `http://192.168.0.15:8081`.
 
 Se o celular não conseguir abrir, libere as portas 8080 (API) e 8081 (app) no firewall do Windows.
+
+## Próximos passos
+
+- Área do vendedor (lojas parceiras cadastrando os próprios produtos). Hoje só o administrador cadastra produtos.
+- Notificações sobre o status do pedido.

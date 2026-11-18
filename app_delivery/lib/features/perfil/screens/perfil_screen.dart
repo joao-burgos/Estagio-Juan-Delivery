@@ -5,6 +5,7 @@ import 'meus_dados_screen.dart';
 import 'endereco_screen.dart';
 import 'alterar_senha_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/notificacoes_em_breve.dart';
 
 /// Tela de Perfil, terceira aba da BottomNavigationBar para usuários com
 /// perfil CLIENTE. Reúne dados da conta, endereços, configurações e logout.
@@ -26,7 +27,7 @@ class PerfilScreen extends StatelessWidget {
         ),
         content: const Text(
           'Versão 1.0.0\n\n'
-          'Seu marketplace de vinhos: descubra, compre e receba os melhores '
+          'Seu aplicativo de delivery de vinhos: descubra, compre e receba os melhores '
           'rótulos e acessórios com praticidade.',
           style: TextStyle(color: kTextPrimary, height: 1.4),
         ),
@@ -95,7 +96,7 @@ class PerfilScreen extends StatelessWidget {
                 icon: Icons.notifications,
                 titulo: 'Notificações',
                 subtitulo: 'Preferências de notificação',
-                onTap: () {},
+                onTap: () => mostrarNotificacoesEmBreve(context),
               ),
               _PerfilItem(
                 icon: Icons.info,

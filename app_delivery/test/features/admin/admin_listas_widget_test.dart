@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:front_delivery/core/theme/app_colors.dart';
+import 'package:front_delivery/core/widgets/paginacao.dart';
 import 'package:front_delivery/features/admin/screens/produto_form_screen.dart';
 import 'package:front_delivery/features/admin/screens/produto_list_screen.dart';
 import 'package:front_delivery/features/admin/screens/usuario_form_screen.dart';
 import 'package:front_delivery/features/admin/screens/usuario_list_screen.dart';
-import 'package:front_delivery/features/admin/widgets/filtro_chip.dart';
+import 'package:front_delivery/core/widgets/filtro_chip.dart';
 import 'package:http/http.dart' as http;
 
 import '../../helpers/api_falsa.dart';
@@ -62,6 +64,19 @@ Finder _cardDe(String nome) => find.ancestor(of: find.text(nome), matching: find
 Future<void> _digitarBusca(WidgetTester tester, String texto) async {
   await tester.enterText(find.byType(TextField).first, texto);
   await tester.pump(const Duration(milliseconds: 350)); // debounce de 300ms
+  await tester.pumpAndSettle();
+}
+
+/// Página destacada (fundo kPrimary) no widget de paginação.
+int _paginaAtual(WidgetTester tester) {
+  final m = tester
+      .widgetList<Material>(find.descendant(of: find.byType(Paginacao), matching: find.byType(Material)))
+      .singleWhere((m) => m.color == kPrimary);
+  return int.parse(tester.widget<Text>(find.descendant(of: find.byWidget(m), matching: find.byType(Text))).data!);
+}
+
+Future<void> _irParaPagina(WidgetTester tester, int pagina) async {
+  await tester.tap(find.byKey(ValueKey('pagina-$pagina')));
   await tester.pumpAndSettle();
 }
 
@@ -490,6 +505,131 @@ void main() {
       expect(find.text('Malbec'), findsOneWidget);
       expect(find.text('Chardonnay'), findsOneWidget);
       expect(find.text('Taça'), findsNothing);
+    });
+  });
+
+  // ===================================================================
+  group('Paginação (admin)', () {
+    final usuarios25 = [
+      for (var i = 1; i <= 25; i++) _usuario(i, 'Cliente ${i.toString().padLeft(2, '0')}', 'c$i@juan.com'),
+    ];
+    final vinhos25 = [for (var i = 1; i <= 25; i++) _vinho(i, 'Vinho ${i.toString().padLeft(2, '0')}')];
+
+    Future<void> abrir(WidgetTester tester, Widget tela) async {
+      usarTelaAlta(tester);
+      await tester.pumpWidget(MaterialApp(home: tela));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('usuários: 25 itens ficam 10 / 10 / 5 e o contador mostra o total', (tester) async {
+      await _api(usuarios: usuarios25).executar(() => abrir(tester, const UsuarioListScreen()));
+      expect(find.text('25 resultados'), findsOneWidget);
+      expect(find.byType(Card), findsNWidgets(10));
+      expect(find.text('Cliente 25'), findsOneWidget); // mais recentes primeiro
+      expect(_paginaAtual(tester), 1);
+
+      await _irParaPagina(tester, 2);
+      expect(find.byType(Card), findsNWidgets(10));
+      expect(find.text('Cliente 15'), findsOneWidget);
+      expect(find.text('Cliente 25'), findsNothing);
+
+      await _irParaPagina(tester, 3);
+      expect(find.byType(Card), findsNWidgets(5));
+      expect(find.text('Cliente 01'), findsOneWidget);
+      expect(find.text('25 resultados'), findsOneWidget, reason: 'contador continua com o total filtrado');
+    });
+
+    testWidgets('usuários: digitar na busca volta para a página 1', (tester) async {
+      await _api(usuarios: usuarios25).executar(() async {
+        await abrir(tester, const UsuarioListScreen());
+        await _irParaPagina(tester, 3);
+        expect(_paginaAtual(tester), 3);
+        await _digitarBusca(tester, 'cliente');
+      });
+      expect(_paginaAtual(tester), 1);
+      expect(find.byType(Card), findsNWidgets(10));
+      expect(find.text('Cliente 25'), findsOneWidget);
+    });
+
+    testWidgets('usuários: pagina a lista já filtrada (busca e chip de status)', (tester) async {
+      final lista = [
+        ...usuarios25,
+        for (var i = 26; i <= 30; i++) _usuario(i, 'Inativo $i', 'i$i@juan.com', ativo: false),
+      ];
+      await _api(usuarios: lista).executar(() async {
+        await abrir(tester, const UsuarioListScreen());
+        expect(find.text('30 resultados'), findsOneWidget);
+        await _irParaPagina(tester, 2);
+        await tester.tap(find.widgetWithText(FiltroChip, 'Inativos'));
+        await tester.pumpAndSettle();
+      });
+      expect(find.text('5 resultados'), findsOneWidget);
+      expect(find.byType(Card), findsNWidgets(5));
+      expect(find.byTooltip('Próxima página'), findsNothing, reason: '5 itens: sem paginação');
+    });
+
+    testWidgets('usuários: com "Todos", os inativos ficam no fim, na última página', (tester) async {
+      final lista = [
+        _usuario(99, 'Bruno Inativo', 'bruno@juan.com', ativo: false),
+        ...usuarios25,
+      ];
+      await _api(usuarios: lista).executar(() => abrir(tester, const UsuarioListScreen()));
+      expect(find.text('Bruno Inativo'), findsNothing);
+      await _irParaPagina(tester, 3);
+      expect(find.byType(Card), findsNWidgets(6));
+      expect(find.text('Inativos'), findsNWidgets(2)); // chip + seção
+      expect(find.text('Bruno Inativo'), findsOneWidget);
+    });
+
+    testWidgets('produtos: 25 itens ficam 10 / 10 / 5 e a busca volta para a página 1', (tester) async {
+      await _api(produtos: vinhos25).executar(() async {
+        await abrir(tester, const ProdutoListScreen());
+        expect(find.text('25 resultados'), findsOneWidget);
+        expect(find.byType(Card), findsNWidgets(10));
+
+        await tester.tap(find.byTooltip('Próxima página'));
+        await tester.pumpAndSettle();
+        expect(_paginaAtual(tester), 2);
+        expect(find.byType(Card), findsNWidgets(10));
+
+        await tester.tap(find.byTooltip('Próxima página'));
+        await tester.pumpAndSettle();
+        expect(_paginaAtual(tester), 3);
+        expect(find.byType(Card), findsNWidgets(5));
+        expect(find.text('25 resultados'), findsOneWidget);
+
+        await _digitarBusca(tester, 'vinho');
+      });
+      expect(_paginaAtual(tester), 1);
+      expect(find.byType(Card), findsNWidgets(10));
+    });
+
+    testWidgets('produtos: excluir o único item da última página volta para a anterior', (tester) async {
+      var excluido = false;
+      final api = ApiFalsa((r) {
+        if (r.method == 'DELETE') {
+          excluido = true;
+          return http.Response('', 204);
+        }
+        // 21 vinhos; mais recentes primeiro, então o id 1 fica sozinho na página 3.
+        return respostaJson([
+          for (var i = excluido ? 2 : 1; i <= 21; i++) _vinho(i, 'Vinho ${i.toString().padLeft(2, '0')}'),
+        ]);
+      });
+      await api.executar(() async {
+        await abrir(tester, const ProdutoListScreen());
+        await _irParaPagina(tester, 3);
+        expect(find.byType(Card), findsOneWidget);
+        expect(find.text('Vinho 01'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Excluir'));
+        await tester.pumpAndSettle();
+      });
+      expect(api.doMetodo('DELETE').single.url.path, '/produtos/1');
+      expect(find.text('20 resultados'), findsOneWidget);
+      expect(_paginaAtual(tester), 2);
+      expect(find.byType(Card), findsNWidgets(10));
     });
   });
 }

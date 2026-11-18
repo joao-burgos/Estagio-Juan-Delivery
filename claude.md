@@ -1,9 +1,11 @@
 # Juan Delivery — Contexto do Projeto
 
 ## Visão Geral
-Marketplace mobile de vinhos e acessórios de vinho, modelo iFood.
-Vendedores cadastram produtos na plataforma, usuários compram pelo app.
-Escopo do estágio: apenas a experiência do usuário/cliente.
+Aplicativo mobile de delivery de vinhos e acessórios de vinho.
+O administrador cadastra e gerencia os produtos e os usuários; o cliente consulta o catálogo, monta o carrinho,
+faz pedidos e confirma a entrega.
+Escopo atual: experiência do cliente (catálogo, carrinho, pedidos, entrega, perfil e endereços) e área
+administrativa (usuários e produtos). A área do vendedor e o pagamento ficam fora do escopo atual.
 
 ## Stack
 - **Backend:** Java 21, Spring Boot 3.4.5, Maven
@@ -43,18 +45,18 @@ app_delivery/                      frontend (Flutter), pacote Dart `front_delive
       theme/     app_colors.dart (todas as cores compartilhadas), app_theme.dart (ThemeData), auth_theme.dart
       session/   sessao_usuario.dart
       network/   api_erro.dart (parseErro)
-      utils/     cpf_validator, harmonizacao_validator, input_formatters, paises
-      widgets/   label_obrigatorio
+      utils/     cpf_validator, harmonizacao_validator, input_formatters, paises, formatadores (reais, datas)
+      widgets/   label_obrigatorio, paginacao, notificacoes_em_breve, painel_filtros, filtro_chip, resultados_header
     features/
       auth/      screens/ (login, cadastro), services/ (auth_service)
       inicio/    screens/ (inicio_screen, com carrossel)
       catalogo/  models/ (produto), services/ (produto_service), screens/ (catalogo, produto_detalhe)
       carrinho/  controllers/ (carrinho_controller), screens/ (carrinho), widgets/ (carrinho_appbar_action)
-      pedidos/   models/ (pedido, item_pedido), services/ (pedido_service),
+      pedidos/   models/ (pedido, item_pedido), services/ (pedido_service), filters/ (pedido_filtro),
                  screens/ (pedidos, detalhes_pedido, confirmacao_pedido, pedido_concluido)
       perfil/    models/ (usuario, endereco), services/ (usuario_service, endereco_service),
                  screens/ (perfil, meus_dados, endereco, alterar_senha)
-      admin/     filters/, screens/ (listas e formulários de usuário e produto), widgets/ (busca, filtros, chips...)
+      admin/     filters/, screens/ (listas e formulários de usuário e produto), widgets/ (barra de busca, chips de status...)
   test/            mesma estrutura de lib/ (core/, features/admin/) + helpers/api_falsa.dart
 ```
 Regra: código usado por uma feature só fica dentro dela; o que é usado por várias vai para `core/`.

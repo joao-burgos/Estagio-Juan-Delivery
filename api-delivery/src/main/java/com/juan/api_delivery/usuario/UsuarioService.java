@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
+import static com.juan.api_delivery.shared.exception.MensagensErro.CPF_JA_CADASTRADO;
 import static com.juan.api_delivery.shared.exception.MensagensErro.EMAIL_JA_CADASTRADO;
 import static com.juan.api_delivery.shared.exception.MensagensErro.USUARIO_JA_ATIVO;
 import static com.juan.api_delivery.shared.exception.MensagensErro.USUARIO_NAO_ENCONTRADO;
@@ -43,9 +44,14 @@ public class UsuarioService {
         if (repository.findByEmailIgnoreCase(email).isPresent()) {
             throw new IllegalArgumentException(EMAIL_JA_CADASTRADO);
         }
+        // Mesma regra do e-mail: conta inativa também conta como CPF já cadastrado.
+        String cpf = CpfValidator.somenteDigitos(dto.getCpf());
+        if (!isCpfCoringa(cpf) && repository.existsByCpf(cpf)) {
+            throw new IllegalArgumentException(CPF_JA_CADASTRADO);
+        }
         Usuario usuario = Usuario.builder()
             .nome(dto.getNome())
-            .cpf(CpfValidator.somenteDigitos(dto.getCpf()))
+            .cpf(cpf)
             .email(email)
             .senha(dto.getSenha())
             .telefone(dto.getTelefone())
@@ -61,8 +67,12 @@ public class UsuarioService {
         repository.findByEmailIgnoreCase(email)
             .filter(u -> !u.getId().equals(id))
             .ifPresent(u -> { throw new IllegalArgumentException(EMAIL_JA_CADASTRADO); });
+        String cpf = CpfValidator.somenteDigitos(dto.getCpf());
+        if (!isCpfCoringa(cpf) && repository.existsByCpfAndIdNot(cpf, id)) {
+            throw new IllegalArgumentException(CPF_JA_CADASTRADO);
+        }
         usuario.setNome(dto.getNome());
-        usuario.setCpf(CpfValidator.somenteDigitos(dto.getCpf()));
+        usuario.setCpf(cpf);
         usuario.setEmail(email);
         usuario.setSenha(dto.getSenha());
         usuario.setTelefone(dto.getTelefone());
@@ -93,6 +103,14 @@ public class UsuarioService {
             throw new CredenciaisInvalidasException();
         }
         return usuario;
+    }
+
+    /**
+     * O CPF coringa de desenvolvimento pode se repetir (o admin padrão usa ele),
+     * por isso a unicidade é verificada aqui e não com UNIQUE no banco.
+     */
+    private static boolean isCpfCoringa(String cpf) {
+        return CpfValidator.CPF_CORINGA.equals(cpf);
     }
 
     /** E-mail é gravado e comparado sem espaços nas pontas e em minúsculas. */

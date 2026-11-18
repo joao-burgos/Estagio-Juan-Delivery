@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// Chip de seleção na identidade do app: selecionado com fundo vinho e
 /// texto branco; não selecionado com fundo branco e borda cinza.

@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../models/endereco.dart';
 import '../services/endereco_service.dart';
 import '../../../core/session/sessao_usuario.dart';
 import '../../../core/widgets/label_obrigatorio.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/input_formatters.dart';
 
 /// Lista os endereços do usuário logado (GET /usuarios/{id}/enderecos),
 /// permitindo cadastrar novos e excluir existentes.
@@ -161,31 +161,6 @@ class _EnderecoScreenState extends State<EnderecoScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-/// Formata o texto digitado no campo CEP para o padrão XXXXX-XXX,
-/// inserindo o hífen automaticamente logo após o quinto dígito.
-/// Deve ser combinado com [FilteringTextInputFormatter.digitsOnly] antes
-/// dele na lista de inputFormatters, para que dígitos já sejam a única
-/// entrada recebida aqui.
-class _CepInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digitos = newValue.text.length > 8 ? newValue.text.substring(0, 8) : newValue.text;
-    final buffer = StringBuffer();
-    for (var i = 0; i < digitos.length; i++) {
-      buffer.write(digitos[i]);
-      if (i == 4) buffer.write('-');
-    }
-    final texto = buffer.toString();
-    return TextEditingValue(
-      text: texto,
-      selection: TextSelection.collapsed(offset: texto.length),
     );
   }
 }
@@ -403,11 +378,7 @@ class _EnderecoFormScreenState extends State<_EnderecoFormScreen> {
       style: const TextStyle(color: kTextPrimary),
       cursorColor: kPrimary,
       keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        _CepInputFormatter(),
-        LengthLimitingTextInputFormatter(9),
-      ],
+      inputFormatters: [CepInputFormatter()],
       decoration: InputDecoration(
         label: LabelObrigatorio('CEP'),
         hintText: 'Ex: 01310-100',

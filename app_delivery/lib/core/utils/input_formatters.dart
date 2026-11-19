@@ -34,42 +34,70 @@ String formatarCpf(String? valor) {
   return buffer.toString();
 }
 
-/// Base dos formatters de máscara: ignora tudo que não for dígito, limita a
-/// quantidade de dígitos e mantém o cursor sempre no final do texto.
+/// Formata um CEP no padrão XXXXX-XXX. Aceita valores parciais.
+String formatarCep(String? valor) {
+  var d = somenteDigitos(valor);
+  if (d.length > 8) d = d.substring(0, 8);
+  return d.length <= 5 ? d : '${d.substring(0, 5)}-${d.substring(5)}';
+}
+
+/// Base dos formatters de máscara: extrai só os dígitos do texto novo, limita a
+/// quantidade e remonta a máscara a partir deles. O cursor é reposicionado pela
+/// quantidade de dígitos que havia antes dele, então editar no meio do campo não
+/// joga o cursor para o fim.
 ///
-/// Se o backspace apagar apenas um símbolo da máscara (parêntese, ponto,
-/// espaço ou hífen), o dígito anterior a ele também é removido, para que o
-/// cursor não "trave" diante do símbolo.
+/// Se a edição apagar apenas um símbolo da máscara (parêntese, ponto, espaço ou
+/// hífen), o dígito vizinho também é removido — o anterior no backspace, o
+/// seguinte no delete —, para que apagar não "trave" diante do símbolo.
 abstract class _MascaraNumericaFormatter extends TextInputFormatter {
   int get maxDigitos;
   String formatar(String digitos);
 
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     var digitos = somenteDigitos(newValue.text);
+    final cursor = newValue.selection.isValid
+        ? newValue.selection.extentOffset.clamp(0, newValue.text.length)
+        : newValue.text.length;
+    var digitosAntes = somenteDigitos(newValue.text.substring(0, cursor)).length;
 
     final apagouSoSimbolo = newValue.text.length < oldValue.text.length && digitos == somenteDigitos(oldValue.text);
-    if (apagouSoSimbolo && digitos.isNotEmpty) {
-      final cursor = newValue.selection.isValid
-          ? newValue.selection.baseOffset.clamp(0, newValue.text.length)
-          : newValue.text.length;
-      final digitosAntes = somenteDigitos(newValue.text.substring(0, cursor)).length;
-      if (digitosAntes > 0) {
+    if (apagouSoSimbolo) {
+      final deleteParaFrente =
+          oldValue.selection.isValid && oldValue.selection.isCollapsed && oldValue.selection.baseOffset == cursor;
+      if (deleteParaFrente) {
+        if (digitosAntes < digitos.length) {
+          digitos = digitos.substring(0, digitosAntes) + digitos.substring(digitosAntes + 1);
+        }
+      } else if (digitosAntes > 0) {
         digitos = digitos.substring(0, digitosAntes - 1) + digitos.substring(digitosAntes);
+        digitosAntes--;
       }
     }
 
     if (digitos.length > maxDigitos) digitos = digitos.substring(0, maxDigitos);
+    if (digitosAntes > digitos.length) digitosAntes = digitos.length;
 
     final texto = formatar(digitos);
     return TextEditingValue(
       text: texto,
-      selection: TextSelection.collapsed(offset: texto.length),
+      selection: TextSelection.collapsed(offset: _posicaoAposDigitos(texto, digitosAntes, digitos.length)),
     );
   }
+
+  /// Posição logo depois do [n]-ésimo dígito de [texto]; com todos os dígitos
+  /// antes do cursor, vai para o fim (depois de um eventual símbolo final).
+  static int _posicaoAposDigitos(String texto, int n, int total) {
+    if (n <= 0) return 0;
+    if (n >= total) return texto.length;
+    var vistos = 0;
+    for (var i = 0; i < texto.length; i++) {
+      if (_ehDigito(texto.codeUnitAt(i)) && ++vistos == n) return i + 1;
+    }
+    return texto.length;
+  }
+
+  static bool _ehDigito(int c) => c >= 0x30 && c <= 0x39;
 }
 
 /// Máscara dinâmica de telefone: (XX) XXXX-XXXX ou (XX) XXXXX-XXXX.
@@ -88,6 +116,15 @@ class CpfInputFormatter extends _MascaraNumericaFormatter {
 
   @override
   String formatar(String digitos) => formatarCpf(digitos);
+}
+
+/// Máscara de CEP: XXXXX-XXX.
+class CepInputFormatter extends _MascaraNumericaFormatter {
+  @override
+  int get maxDigitos => 8;
+
+  @override
+  String formatar(String digitos) => formatarCep(digitos);
 }
 
 /// Teor alcoólico: até 2 dígitos inteiros e, opcionalmente, 1 casa decimal

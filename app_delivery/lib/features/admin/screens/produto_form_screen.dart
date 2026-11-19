@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../catalogo/models/produto.dart';
 import '../../catalogo/services/produto_service.dart';
 import '../../../core/utils/harmonizacao_validator.dart';
+import '../../../core/utils/input_formatters.dart';
 import '../../../core/utils/teor_alcool_validator.dart';
 import '../widgets/pais_autocomplete_field.dart';
 import '../../../core/widgets/label_obrigatorio.dart';
@@ -69,7 +70,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
       _descricaoCtrl.text = p.descricao ?? '';
       _paisCtrl.text = p.paisOrigem ?? '';
       _safraCtrl.text = p.safra?.toString() ?? '';
-      _teorAlcoolCtrl.text = p.teorAlcool?.toString() ?? '';
+      _teorAlcoolCtrl.text = formatarTeorAlcool(p.teorAlcool);
       _harmonizacaoCtrl.text = p.harmonizacao ?? '';
       _tipoAcessorioCtrl.text = p.tipoAcessorio ?? '';
       _marcaCtrl.text = p.marca ?? '';
@@ -366,6 +367,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
               style: const TextStyle(color: kTextPrimary),
               cursorColor: kPrimary,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [TeorAlcoolInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Teor Alcoólico (%)',
                 prefixIcon: Icon(Icons.opacity_outlined, color: kTextSecondary, size: 20),

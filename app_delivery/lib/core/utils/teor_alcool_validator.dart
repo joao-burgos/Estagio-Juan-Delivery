@@ -17,3 +17,10 @@ String? validarTeorAlcool(String? valor) {
   if (teor < kTeorAlcoolMin || teor > kTeorAlcoolMax) return kMsgTeorAlcoolInvalido;
   return null;
 }
+
+/// Texto do campo para um teor vindo da API: 13.5 → "13,5"; 13.0 → "13".
+String formatarTeorAlcool(double? teor) {
+  if (teor == null) return '';
+  if (teor == teor.truncateToDouble()) return teor.toInt().toString();
+  return teor.toString().replaceAll('.', ',');
+}

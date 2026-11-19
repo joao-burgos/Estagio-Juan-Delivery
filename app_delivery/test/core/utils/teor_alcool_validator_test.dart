@@ -36,4 +36,18 @@ void main() {
       expect(kMsgTeorAlcoolInvalido, 'Teor alcoólico deve estar entre 7% e 20%');
     });
   });
+
+  group('faixa 7% a 20% (pedido do campo)', () {
+    test('6,9 recusado', () => expect(validarTeorAlcool('6,9'), kMsgTeorAlcoolInvalido));
+    test('7 aceito', () => expect(validarTeorAlcool('7'), isNull));
+    test('20 aceito', () => expect(validarTeorAlcool('20'), isNull));
+    test('20,5 recusado', () => expect(validarTeorAlcool('20,5'), kMsgTeorAlcoolInvalido));
+  });
+
+  test('formatarTeorAlcool mostra o valor da API com vírgula', () {
+    expect(formatarTeorAlcool(13.5), '13,5');
+    expect(formatarTeorAlcool(13.0), '13');
+    expect(formatarTeorAlcool(20), '20');
+    expect(formatarTeorAlcool(null), '');
+  });
 }

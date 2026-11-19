@@ -89,3 +89,14 @@ class CpfInputFormatter extends _MascaraNumericaFormatter {
   @override
   String formatar(String digitos) => formatarCpf(digitos);
 }
+
+/// Teor alcoólico: até 2 dígitos inteiros e, opcionalmente, 1 casa decimal
+/// separada por vírgula ou ponto (ex.: "7", "13,", "13,5", "20"). Qualquer
+/// edição fora desse formato (letras, sinal, "135", "13,55", "13,5,") é ignorada.
+class TeorAlcoolInputFormatter extends TextInputFormatter {
+  static final _formato = RegExp(r'^(\d{1,2}([.,]\d?)?)?$');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) =>
+      _formato.hasMatch(newValue.text) ? newValue : oldValue;
+}

@@ -276,6 +276,40 @@ void main() {
       expect(api.corpoJson(put)['estoque'], 0);
     });
 
+    testWidgets('editar vinho com teor 13.5 abre o campo com 13,5 e salva sem erro', (tester) async {
+      final api = ApiFalsa((_) => respostaJson({'id': 3}, 200));
+      final vinho = Produto(
+          id: 3,
+          nome: 'Malbec',
+          preco: 89.9,
+          estoque: 4,
+          tipo: 'VINHO',
+          categoria: 'VINHO_TINTO',
+          paisOrigem: 'Argentina',
+          safra: 2020,
+          teorAlcool: 13.5,
+          harmonizacao: 'Carnes vermelhas');
+      await api.executar(() async {
+        await _abrir(tester, produto: vinho);
+        expect(find.widgetWithText(TextFormField, '13,5'), findsOneWidget);
+        await _salvar(tester, 'ATUALIZAR');
+      });
+      expect(erroNoCampo('Teor Alcoólico (%)', 'Teor alcoólico deve estar entre 7% e 20%'), findsNothing);
+      expect(api.corpoJson(api.doMetodo('PUT').single)['teorAlcool'], 13.5);
+    });
+
+    testWidgets('campo de teor ignora letras, terceiro dígito e segunda casa decimal', (tester) async {
+      await _abrir(tester);
+      final teor = campo('Teor Alcoólico (%)');
+      await tester.enterText(teor, '13,5');
+      await tester.enterText(teor, '13,55');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '13,5'), findsOneWidget);
+      await tester.enterText(teor, '135');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '13,5'), findsOneWidget);
+    });
+
     testWidgets('erro de safra vindo da API aparece embaixo do campo Safra', (tester) async {
       final api = ApiFalsa((_) => respostaJson({
             'erros': ['Safra é obrigatória para vinhos']

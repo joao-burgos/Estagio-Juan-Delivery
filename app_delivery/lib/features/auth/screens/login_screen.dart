@@ -43,13 +43,19 @@ class _LoginScreenState extends State<LoginScreen> {
       if (id != null) {
         await prefs.setInt('usuario_id', int.tryParse(id.toString()) ?? 0);
       }
+      // O perfil salvo é só informativo: ao reabrir o app, o perfil usado é
+      // sempre o que a API devolve (ver restaurarSessao).
+      final perfil = dados['perfil']?.toString();
+      if (perfil != null) {
+        await prefs.setString('usuario_perfil', perfil);
+      }
       // Guarda o perfil retornado pela API na sessão global, usada pela
       // MainScreen para decidir quais telas o usuário pode acessar.
       SessaoUsuario.salvar(
         id: id == null ? null : int.tryParse(id.toString()),
         nome: (dados['nome'] ?? '').toString(),
         email: (dados['email'] ?? '').toString(),
-        perfil: dados['perfil']?.toString(),
+        perfil: perfil,
       );
       if (mounted) {
         Navigator.pushReplacement(

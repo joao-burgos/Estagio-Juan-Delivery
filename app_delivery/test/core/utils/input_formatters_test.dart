@@ -205,4 +205,30 @@ void main() {
     });
     test('backspace funciona normalmente', () => expect(_backspace(f, _digitar(f, '13,5')).text, '13,'));
   });
+
+  group('PrecoInputFormatter', () {
+    final f = PrecoInputFormatter();
+
+    for (final valido in ['89', '89,', '89,9', '89,90', '89.90', '1500', '1500,5', '1500000', '0,50']) {
+      test('aceita "$valido"', () => expect(_digitar(f, valido).text, valido));
+    }
+
+    test('bloqueia letras', () => expect(_digitar(f, '8a9b').text, '89'));
+    test('bloqueia sinal de menos', () => expect(_digitar(f, '-89').text, '89'));
+    test('bloqueia espaço', () => expect(_digitar(f, '8 9').text, '89'));
+    test('bloqueia um segundo separador', () {
+      // "1.23" já tem 2 casas: o "4" (3ª casa) e a vírgula (2º separador) são ignorados.
+      expect(_digitar(f, '1.234,56').text, '1.23');
+      expect(_digitar(f, '89,9,0').text, '89,90');
+      expect(_digitar(f, '89,.').text, '89,');
+    });
+    test('bloqueia uma terceira casa decimal', () => expect(_digitar(f, '89,999').text, '89,99'));
+    test('bloqueia separador sem dígito antes', () => expect(_digitar(f, ',5').text, '5'));
+    test('colar texto inválido é ignorado', () {
+      expect(_colar(f, '1.234,56').text, '');
+      expect(_colar(f, 'R\$ 10').text, '');
+      expect(_colar(f, '120,00').text, '120,00');
+    });
+    test('backspace funciona normalmente', () => expect(_backspace(f, _digitar(f, '89,90')).text, '89,9'));
+  });
 }

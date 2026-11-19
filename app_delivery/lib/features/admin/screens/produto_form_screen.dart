@@ -4,6 +4,7 @@ import '../../catalogo/models/produto.dart';
 import '../../catalogo/services/produto_service.dart';
 import '../../../core/utils/harmonizacao_validator.dart';
 import '../../../core/utils/input_formatters.dart';
+import '../../../core/utils/preco_validator.dart';
 import '../../../core/utils/teor_alcool_validator.dart';
 import '../widgets/pais_autocomplete_field.dart';
 import '../../../core/widgets/label_obrigatorio.dart';
@@ -66,7 +67,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
       final p = widget.produto!;
       _tipo = p.tipo;
       _nomeCtrl.text = p.nome;
-      _precoCtrl.text = p.preco.toString();
+      _precoCtrl.text = formatarPreco(p.preco);
       _descricaoCtrl.text = p.descricao ?? '';
       _paisCtrl.text = p.paisOrigem ?? '';
       _safraCtrl.text = p.safra?.toString() ?? '';
@@ -97,7 +98,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     final p = Produto(
       nome: _nomeCtrl.text.trim(),
-      preco: double.parse(_precoCtrl.text.trim()),
+      preco: parsePreco(_precoCtrl.text)!,
       descricao: _descricaoCtrl.text.trim(),
       tipo: _tipo,
       estoque: int.parse(_estoqueCtrl.text.trim()),
@@ -231,18 +232,13 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
       controller: _precoCtrl,
       style: const TextStyle(color: kTextPrimary),
       cursorColor: kPrimary,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [PrecoInputFormatter()],
       decoration: const InputDecoration(
         label: LabelObrigatorio('Preço (R\$)'),
         prefixIcon: Icon(Icons.attach_money, color: kTextSecondary, size: 20),
       ),
-      validator: (v) {
-        if (v!.isEmpty) return 'Informe o preço';
-        final preco = double.tryParse(v.trim());
-        if (preco == null) return 'Valor inválido';
-        if (preco < 0) return 'O preço não pode ser negativo';
-        return null;
-      },
+      validator: validarPreco,
     );
   }
 

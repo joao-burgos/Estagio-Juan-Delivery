@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import static com.juan.api_delivery.shared.exception.MensagensErro.CANCELE_ANTES_DE_EXCLUIR;
 import static com.juan.api_delivery.shared.exception.MensagensErro.PEDIDO_CANCELADO_NAO_ALTERA;
+import static com.juan.api_delivery.shared.exception.MensagensErro.PEDIDO_ENTREGUE_NAO_CANCELA;
 import static com.juan.api_delivery.shared.exception.MensagensErro.PEDIDO_NAO_ENCONTRADO;
 import static com.juan.api_delivery.shared.exception.MensagensErro.USUARIO_NAO_ENCONTRADO;
 
@@ -55,7 +56,7 @@ public class PedidoService {
      * Ao cancelar, devolve ao estoque a quantidade de todos os itens
      * (reativando os produtos que voltarem a ter estoque). Cancelar de novo
      * não devolve outra vez, e um pedido cancelado não volta a outro status,
-     * porque o estoque dele já foi devolvido.
+     * porque o estoque dele já foi devolvido. Pedido já entregue não pode ser cancelado.
      */
     @Transactional
     public Pedido atualizarStatus(Long id, StatusPedido status) {
@@ -65,6 +66,9 @@ public class PedidoService {
                 return pedido;
             }
             throw new IllegalArgumentException(PEDIDO_CANCELADO_NAO_ALTERA);
+        }
+        if (status == StatusPedido.CANCELADO && pedido.getStatus() == StatusPedido.ENTREGUE) {
+            throw new IllegalArgumentException(PEDIDO_ENTREGUE_NAO_CANCELA);
         }
         if (status == StatusPedido.CANCELADO) {
             for (ItemPedido item : itemPedidoRepository.findByPedidoId(id)) {

@@ -218,6 +218,31 @@ class PedidoEstoqueIntegracaoTest extends IntegracaoBase {
         }
 
         @Test
+        void cancelarPedidoPendenteDevolveOEstoque() throws Exception {
+            long vinho = criarVinho(5);
+            long pedido = criarPedido(); // nasce PENDENTE
+            comprar(pedido, vinho, 3);
+            assertThat(produto(vinho).getEstoque()).isEqualTo(2);
+
+            mudarStatus(pedido, "CANCELADO").andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADO"));
+            assertThat(produto(vinho).getEstoque()).isEqualTo(5);
+        }
+
+        @Test
+        void cancelarPedidoEntregueERecusadoSemMexerNoEstoque() throws Exception {
+            long vinho = criarVinho(5);
+            long pedido = criarPedido();
+            comprar(pedido, vinho, 2);
+            mudarStatus(pedido, "ENTREGUE").andExpect(status().isOk());
+
+            mudarStatus(pedido, "CANCELADO").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Pedido já entregue não pode ser cancelado"));
+            assertThat(produto(vinho).getEstoque()).isEqualTo(3);
+            assertThat(pedidoRepository.findById(pedido).orElseThrow().getStatus()).isEqualTo(StatusPedido.ENTREGUE);
+        }
+
+        @Test
         void pedidoCanceladoNaoMudaDeStatusNemDeItens() throws Exception {
             long vinho = criarVinho(5);
             long pedido = criarPedido();

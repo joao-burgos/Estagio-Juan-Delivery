@@ -5,6 +5,7 @@ import '../filters/texto_busca.dart';
 import '../../catalogo/models/produto.dart';
 import '../../catalogo/services/produto_service.dart';
 import '../widgets/barra_busca_filtros.dart';
+import '../../../core/widgets/dialogo_confirmacao.dart';
 import '../../../core/widgets/filtro_chip.dart';
 import '../../../core/widgets/painel_filtros.dart';
 import '../../../core/widgets/resultados_header.dart';
@@ -202,35 +203,15 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   }
 
   Future<void> _deletar(int id, String nome) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text(
-          'Excluir produto?',
-          style: TextStyle(color: kPrimary, fontWeight: FontWeight.w600),
-        ),
-        content: Text(
-          'O produto $nome será removido definitivamente da plataforma. '
+    final confirmar = await mostrarDialogoConfirmacao(
+      context,
+      titulo: 'Excluir produto?',
+      mensagem: 'O produto $nome será removido definitivamente da plataforma. '
           'Esta ação não pode ser desfeita.',
-          style: const TextStyle(color: kTextPrimary),
-        ),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: kTextSecondary),
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+      textoConfirmar: 'Excluir',
+      corConfirmar: Colors.red.shade700,
     );
-    if (confirmar != true || !mounted) return;
+    if (!confirmar || !mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
     try {

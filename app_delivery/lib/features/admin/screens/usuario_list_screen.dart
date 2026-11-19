@@ -4,6 +4,7 @@ import '../filters/usuario_filtro.dart';
 import '../../perfil/models/usuario.dart';
 import '../../perfil/services/usuario_service.dart';
 import '../widgets/barra_busca_filtros.dart';
+import '../../../core/widgets/dialogo_confirmacao.dart';
 import '../../../core/widgets/filtro_chip.dart';
 import '../../../core/widgets/painel_filtros.dart';
 import '../../../core/widgets/resultados_header.dart';
@@ -133,34 +134,14 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   }
 
   Future<void> _deletar(int id, String nome) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text(
-          'Confirmar exclusão',
-          style: TextStyle(color: kPrimary, fontWeight: FontWeight.w600),
-        ),
-        content: Text(
-          'Tem certeza que deseja excluir o usuário "$nome"?',
-          style: const TextStyle(color: kTextPrimary),
-        ),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: kTextSecondary),
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red.shade400),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+    final confirmar = await mostrarDialogoConfirmacao(
+      context,
+      titulo: 'Confirmar exclusão',
+      mensagem: 'Tem certeza que deseja excluir o usuário "$nome"?',
+      textoConfirmar: 'Excluir',
+      corConfirmar: Colors.red.shade400,
     );
-    if (confirmar == true) {
+    if (confirmar) {
       await service.deletar(id);
       _carregar();
     }

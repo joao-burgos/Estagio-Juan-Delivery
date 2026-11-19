@@ -9,6 +9,8 @@ void main() {
 
   testWidgets('o app abre na tela de login', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
+    // Sem sessão salva, a checagem inicial termina direto no login.
+    await tester.pumpAndSettle();
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'ENTRAR'), findsOneWidget);

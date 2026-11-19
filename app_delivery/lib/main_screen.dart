@@ -18,7 +18,11 @@ import 'features/admin/screens/usuario_list_screen.dart';
 /// Sem sessão válida (usuário não autenticado tentando acessar a tela
 /// diretamente), redireciona para a LoginScreen.
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({super.key, this.abaInicial});
+
+  /// Aba já conhecida ao abrir (sessão restaurada depois de recarregar o app).
+  /// Sem ela, a aba salva em `home_tab_index` é lida em segundo plano.
+  final int? abaInicial;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -45,7 +49,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _restoreIndex();
+    final aba = widget.abaInicial;
+    if (aba != null) {
+      if (aba >= 0 && aba < _quantidadeAbas) _index = aba;
+    } else {
+      _restoreIndex();
+    }
   }
 
   Future<void> _restoreIndex() async {

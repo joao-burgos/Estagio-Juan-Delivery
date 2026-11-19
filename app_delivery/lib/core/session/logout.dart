@@ -7,7 +7,7 @@ import '../theme/app_colors.dart';
 import 'sessao_usuario.dart';
 
 /// Chaves do shared_preferences ligadas à sessão do usuário logado.
-const chavesSessao = ['usuario_nome', 'usuario_email', 'usuario_id', 'home_tab_index'];
+const chavesSessao = ['usuario_nome', 'usuario_email', 'usuario_id', 'usuario_perfil', 'home_tab_index'];
 
 /// Pergunta "Deseja sair da conta?" e, se confirmado, faz o logout.
 /// Usado pelo cliente (tela de Perfil) e pelo admin (AppBar das listas).

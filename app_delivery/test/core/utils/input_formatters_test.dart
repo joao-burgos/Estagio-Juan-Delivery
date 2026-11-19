@@ -181,4 +181,28 @@ void main() {
       expect(formatarCpf('11144477735'), '111.444.777-35');
     });
   });
+
+  group('TeorAlcoolInputFormatter', () {
+    final f = TeorAlcoolInputFormatter();
+
+    for (final valido in ['7', '13', '13,', '13,5', '13.5', '20']) {
+      test('aceita "$valido"', () => expect(_digitar(f, valido).text, valido));
+    }
+
+    test('bloqueia letras', () => expect(_digitar(f, '1a3b').text, '13'));
+    test('bloqueia um terceiro dígito inteiro', () => expect(_digitar(f, '135').text, '13'));
+    test('bloqueia uma segunda casa decimal', () => expect(_digitar(f, '13,55').text, '13,5'));
+    test('bloqueia um segundo separador', () {
+      expect(_digitar(f, '13,,').text, '13,');
+      expect(_digitar(f, '13,.').text, '13,');
+      expect(_digitar(f, '1,5,').text, '1,5');
+    });
+    test('bloqueia sinal de menos', () => expect(_digitar(f, '-5').text, '5'));
+    test('bloqueia separador sem dígito antes', () => expect(_digitar(f, ',5').text, '5'));
+    test('colar texto inválido é ignorado', () {
+      expect(_colar(f, '13,55').text, '');
+      expect(_colar(f, '12.5').text, '12.5');
+    });
+    test('backspace funciona normalmente', () => expect(_backspace(f, _digitar(f, '13,5')).text, '13,'));
+  });
 }

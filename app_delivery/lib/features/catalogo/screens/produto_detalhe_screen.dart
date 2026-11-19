@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../carrinho/controllers/carrinho_controller.dart';
@@ -20,6 +22,17 @@ class _ProdutoDetalheScreenState extends State<ProdutoDetalheScreen> {
   Produto? _produto;
   bool _carregando = true;
   String? _erro;
+
+  /// Tempo em que o botão mostra "ADICIONADO" depois de uma adição.
+  static const duracaoConfirmacao = Duration(seconds: 2);
+
+  /// Tempo em que a mensagem de limite de estoque fica abaixo do botão.
+  static const duracaoAvisoLimite = Duration(seconds: 3);
+
+  bool _confirmando = false;
+  bool _avisoLimite = false;
+  Timer? _timerConfirmacao;
+  Timer? _timerAvisoLimite;
 
   @override
   void initState() {
@@ -49,15 +62,39 @@ class _ProdutoDetalheScreenState extends State<ProdutoDetalheScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _timerConfirmacao?.cancel();
+    _timerAvisoLimite?.cancel();
+    super.dispose();
+  }
+
+  /// Sem SnackBar: a confirmação aparece no próprio botão (por
+  /// [duracaoConfirmacao]) e no "pulo" do ícone do carrinho. Um novo toque
+  /// nesse intervalo adiciona de novo e reinicia a confirmação.
   void _adicionarAoCarrinho(Produto produto) {
-    if (!context.read<CarrinhoController>().adicionar(produto)) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Produto adicionado ao carrinho!'),
-        backgroundColor: Colors.green.shade700,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (!context.read<CarrinhoController>().adicionar(produto)) {
+      _mostrarAvisoLimite();
+      return;
+    }
+    _timerConfirmacao?.cancel();
+    _timerAvisoLimite?.cancel();
+    setState(() {
+      _confirmando = true;
+      _avisoLimite = false;
+    });
+    _timerConfirmacao = Timer(duracaoConfirmacao, () {
+      if (mounted) setState(() => _confirmando = false);
+    });
+  }
+
+  /// Mensagem curta em vermelho logo abaixo do botão, que some sozinha.
+  void _mostrarAvisoLimite() {
+    _timerAvisoLimite?.cancel();
+    setState(() => _avisoLimite = true);
+    _timerAvisoLimite = Timer(duracaoAvisoLimite, () {
+      if (mounted) setState(() => _avisoLimite = false);
+    });
   }
 
   @override
@@ -151,7 +188,13 @@ class _ProdutoDetalheScreenState extends State<ProdutoDetalheScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _BotaoAdicionar(produto: p, onAdicionar: () => _adicionarAoCarrinho(p)),
+          _BotaoAdicionar(
+            produto: p,
+            confirmando: _confirmando,
+            avisoLimite: _avisoLimite,
+            onAdicionar: () => _adicionarAoCarrinho(p),
+            onLimite: _mostrarAvisoLimite,
+          ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -265,26 +308,80 @@ class _ErroView extends StatelessWidget {
   }
 }
 
+/// Mensagem exibida abaixo do botão ao tentar passar do estoque.
+const kMensagemLimiteEstoque = 'Limite de estoque atingido';
+
 /// Botão de adicionar ao carrinho. Fica desabilitado quando o carrinho já tem
-/// todo o estoque disponível do produto, para a quantidade não passar dele.
+/// todo o estoque disponível do produto, para a quantidade não passar dele;
+/// tocar nele assim mostra [kMensagemLimiteEstoque] logo abaixo (via
+/// [onLimite]). Com [confirmando], mostra "ADICIONADO" com um check.
 class _BotaoAdicionar extends StatelessWidget {
   final Produto produto;
+  final bool confirmando;
+  final bool avisoLimite;
   final VoidCallback onAdicionar;
+  final VoidCallback onLimite;
 
-  const _BotaoAdicionar({required this.produto, required this.onAdicionar});
+  const _BotaoAdicionar({
+    required this.produto,
+    required this.confirmando,
+    required this.avisoLimite,
+    required this.onAdicionar,
+    required this.onLimite,
+  });
 
   @override
   Widget build(BuildContext context) {
     final carrinho = context.watch<CarrinhoController>();
     final pode = carrinho.podeAdicionar(produto);
     final noCarrinho = carrinho.quantidadeDe(produto);
+    final String texto;
+    final IconData icone;
+    if (!pode) {
+      texto = 'ESTOQUE MÁXIMO NO CARRINHO';
+      icone = Icons.shopping_cart_outlined;
+    } else if (confirmando) {
+      texto = 'ADICIONADO';
+      icone = Icons.check;
+    } else {
+      texto = 'ADICIONAR AO CARRINHO';
+      icone = Icons.shopping_cart_outlined;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton.icon(
-          onPressed: pode ? onAdicionar : null,
-          icon: const Icon(Icons.shopping_cart_outlined),
-          label: Text(pode ? 'ADICIONAR AO CARRINHO' : 'ESTOQUE MÁXIMO NO CARRINHO'),
+        // O botão desabilitado não trata toques; o GestureDetector os recebe
+        // para avisar que o limite do estoque foi atingido.
+        GestureDetector(
+          onTap: pode ? null : onLimite,
+          child: ElevatedButton(
+            onPressed: pode ? onAdicionar : null,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: Row(
+                key: ValueKey(texto),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icone),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(texto)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: avisoLimite
+              ? const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text(
+                    kMensagemLimiteEstoque,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kPerigo, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
         ),
         if (noCarrinho > 0) ...[
           const SizedBox(height: 6),

@@ -100,3 +100,15 @@ class TeorAlcoolInputFormatter extends TextInputFormatter {
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) =>
       _formato.hasMatch(newValue.text) ? newValue : oldValue;
 }
+
+/// Preço: dígitos sem limite na parte inteira e, opcionalmente, até 2 casas
+/// decimais separadas por vírgula ou ponto (ex.: "89", "89,", "89,9", "89.90").
+/// Qualquer edição fora desse formato (letras, sinal, espaço, segundo separador,
+/// terceira casa decimal) é ignorada.
+class PrecoInputFormatter extends TextInputFormatter {
+  static final _formato = RegExp(r'^(\d+([.,]\d{0,2})?)?$');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) =>
+      _formato.hasMatch(newValue.text) ? newValue : oldValue;
+}

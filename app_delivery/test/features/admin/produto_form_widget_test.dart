@@ -324,6 +324,89 @@ void main() {
     });
   });
 
+  group('Preço', () {
+    Produto vinho({double preco = 120.00}) => Produto(
+        id: 3,
+        nome: 'Malbec',
+        preco: preco,
+        estoque: 4,
+        tipo: 'VINHO',
+        categoria: 'VINHO_TINTO',
+        paisOrigem: 'Argentina',
+        safra: 2020,
+        teorAlcool: 13.5,
+        harmonizacao: 'Carnes vermelhas');
+
+    testWidgets('editar produto com preço 120.00 abre com 120,00 e salva sem erro', (tester) async {
+      final api = ApiFalsa((_) => respostaJson({'id': 3}, 200));
+      await api.executar(() async {
+        await _abrir(tester, produto: vinho());
+        expect(find.widgetWithText(TextFormField, '120,00'), findsOneWidget);
+        await _salvar(tester, 'ATUALIZAR');
+      });
+      expect(api.corpoJson(api.doMetodo('PUT').single)['preco'], 120.0);
+      expect(find.byType(ProdutoFormScreen), findsNothing);
+    });
+
+    testWidgets('preço com vírgula (89,90) é enviado com ponto (89.9)', (tester) async {
+      final api = ApiFalsa((_) => respostaJson({'id': 1}, 201));
+      await api.executar(() async {
+        await _abrir(tester);
+        await _preencherVinho(tester);
+        await tester.enterText(campo('Preço (R\$) *'), '89,90');
+        await _salvar(tester);
+        await tester.pump(const Duration(seconds: 1));
+      });
+      expect(api.corpoJson(api.doMetodo('POST').single)['preco'], 89.9);
+    });
+
+    for (final (entrada, mensagem) in [
+      ('', 'Informe o preço'),
+      ('0', 'O preço deve ser maior que zero'),
+      ('0,00', 'O preço deve ser maior que zero'),
+    ]) {
+      testWidgets('preço "$entrada" é barrado no app', (tester) async {
+        final api = ApiFalsa((_) => respostaJson({'id': 1}, 201));
+        await api.executar(() async {
+          await _abrir(tester);
+          await _preencherVinho(tester);
+          await tester.enterText(campo('Preço (R\$) *'), entrada);
+          await _salvar(tester);
+          await tester.pump(const Duration(seconds: 1));
+        });
+        expect(erroNoCampo('Preço (R\$) *', mensagem), findsOneWidget);
+        expect(api.requisicoes, isEmpty);
+      });
+    }
+
+    testWidgets('preço "0,50" é aceito', (tester) async {
+      final api = ApiFalsa((_) => respostaJson({'id': 1}, 201));
+      await api.executar(() async {
+        await _abrir(tester);
+        await _preencherVinho(tester);
+        await tester.enterText(campo('Preço (R\$) *'), '0,50');
+        await _salvar(tester);
+        await tester.pump(const Duration(seconds: 1));
+      });
+      expect(api.corpoJson(api.doMetodo('POST').single)['preco'], 0.5);
+    });
+
+    testWidgets('campo de preço ignora letras, segundo separador e terceira casa decimal', (tester) async {
+      await _abrir(tester);
+      final preco = campo('Preço (R\$) *');
+      await tester.enterText(preco, '89,90');
+      await tester.enterText(preco, '89,909');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '89,90'), findsOneWidget);
+      await tester.enterText(preco, '89,9,0');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '89,90'), findsOneWidget);
+      await tester.enterText(preco, '89a');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '89,90'), findsOneWidget);
+    });
+  });
+
   group('Acessório', () {
     testWidgets('acessório sem harmonização, safra e país funciona', (tester) async {
       final api = ApiFalsa((_) => respostaJson({'id': 2}, 201));
